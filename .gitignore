@@ -1,0 +1,14 @@
+*.sqlite3
+*.pyc
+*.pyo
+__pycache__
+.env
+staticfiles
+media
+db.sqlite3
+db.sqlite3-journal
+
+api/__pycache__
+api/migrations
+back/__pycache__
+app.txt
