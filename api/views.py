@@ -213,33 +213,56 @@ def sales_detail(request, pk):
 
 
 
+from django.db import transaction
+
+
 @api_view(['POST'])
 def create_user_and_sales(request):
     """
-    Create a new user and associated sales record.
+    Create a new user and associated sales record in a transactional manner.
     """
-    user_data = request.data.get('user', {})
-    sales_data = request.data.get('sales', {})
-    
-    user_serializer = UserSerializer(data=user_data)
-    if user_serializer.is_valid():
-        user = user_serializer.save()
-        
-        # Create Sales entry linked to the user
-        sales_data['user'] = user.id  # Associate user with sales
-        sales_serializer = SalesSerializer(data=sales_data)
-        
-        if sales_serializer.is_valid():
-            sales_serializer.save()
-            return Response({
-                'user': user_serializer.data,
-                'sales': sales_serializer.data
-            }, status=status.HTTP_201_CREATED)
-        else:
-            user.delete()  # Rollback user creation if sales fails
-            return Response(sales_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    user_data = request.data.get('user')
+    sales_data = request.data.get('sales')
+
+    if not user_data or not sales_data:
+        return Response(
+            {"error": "Both 'user' and 'sales' data are required."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    with transaction.atomic():
+        # Hash the password before creating the user
+        password = user_data.pop('password', None)  # Remove password from user_data
+        user_serializer = UserSerializer(data=user_data)
+
+        if user_serializer.is_valid():
+            user = user_serializer.save(commit=False)  # Create user instance but don't save yet
+            
+            if password:  # Hash password if provided
+                user.set_password(password)
+            
+            user.save()  # Save user with hashed password
+            
+            # Associate user with sales data
+            sales_data['user'] = user.id
+            sales_serializer = SalesSerializer(data=sales_data)
+
+            if sales_serializer.is_valid():
+                sales_serializer.save()
+                return Response(
+                    {'user': user_serializer.data, 'sales': sales_serializer.data},
+                    status=status.HTTP_201_CREATED
+                )
+
+            return Response(
+                {"error": "Sales record creation failed.", "details": sales_serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {"error": "User creation failed.", "details": user_serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 
