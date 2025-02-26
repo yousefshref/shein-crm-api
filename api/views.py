@@ -232,7 +232,7 @@ def create_user_and_sales(request):
 
     with transaction.atomic():
         # Hash the password before creating the user
-        password = user_data.pop('password', None)  # Remove password from user_data
+        password = user_data.get('password', None)  # Remove password from user_data
         user_serializer = UserSerializer(data=user_data)
 
         if user_serializer.is_valid():
