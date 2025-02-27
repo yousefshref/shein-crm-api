@@ -3,8 +3,8 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Order, ShippingCourier, OrderStatus, Sales
-from .serializers import OrderSerializer, ShippingCourierSerializer, OrderStatusSerializer, SalesSerializer, UserSerializer
+from .models import *
+from .serializers import *
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
@@ -33,37 +33,36 @@ def get_user(request):
 def order_list(request):
     if request.method == 'GET':
         orders = Order.objects.all().order_by('-id')
-        # date
-        date_from = request.GET.get('date_from')
-        date_to = request.GET.get('date_to')
+    
         # order info
         sales_id = request.GET.get('sales_id')
         customer_name = request.GET.get('customer_name')
-        customer_phone = request.GET.get('customer_phone')
-        customer_wp = request.GET.get('customer_wp')
-        # shipping
-        order_status = request.GET.get('order_status')
-        shipping_courier = request.GET.get('shipping_courier')
+        customer_number = request.GET.get('customer_number')
+
+        is_delivered = request.GET.get('is_delivered')
         is_collected = request.GET.get('is_collected')
 
-        if date_from:
-            orders = orders.filter(date__gte=date_from)
-        if date_to:
-            orders = orders.filter(date__lte=date_to)
+        shipping_company = request.GET.get('shipping_company')
+
+        if shipping_company:
+            orders = orders.filter(bag__shipping_company__id=shipping_company)
+
         if sales_id:
-            orders = orders.filter(sales__id=sales_id)
+            orders = orders.filter(seller__id=sales_id)
         if customer_name:
             orders = orders.filter(customer_name__icontains=customer_name)
-        if customer_phone:
-            orders = orders.filter(customer_phone__icontains=customer_phone)
-        if customer_wp:
-            orders = orders.filter(customer_wp__icontains=customer_wp)
-        if order_status:
-            orders = orders.filter(order_status__name=order_status)
-        if shipping_courier:
-            orders = orders.filter(shipping_courier__id=shipping_courier)
+        if customer_number:
+            orders = orders.filter(customer_number__icontains=customer_number)
+        
+        if str(is_delivered) == 'true':
+            orders = orders.filter(is_delivered=True)
+        if str(is_delivered) == 'false':
+            orders = orders.filter(is_delivered=False)
+
         if str(is_collected) == 'true':
             orders = orders.filter(is_collected=True)
+        if str(is_collected) == 'false':
+            orders = orders.filter(is_collected=False)
 
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
@@ -245,14 +244,6 @@ from django.db.models.functions import TruncMonth
 def filter_orders(request):
     orders = Order.objects.all()
     
-    # Date filters
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    if date_from:
-        orders = orders.filter(date__gte=date_from)
-    if date_to:
-        orders = orders.filter(date__lte=date_to)
-    
     # Other filters
     sales_id = request.GET.get('sales_id')
     customer_number = request.GET.get('customer_number')
@@ -266,7 +257,7 @@ def filter_orders(request):
     if str(is_collected).lower() == 'true':
         orders = orders.filter(is_collected=True)
     if sales_id:
-        orders = orders.filter(sales__id=sales_id)
+        orders = orders.filter(seller__id=sales_id)
     
     return orders
 
@@ -338,3 +329,134 @@ def get_yearly_orders_data(request):
     })
 
 
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def get_bags(request):
+    if request.method == 'GET':
+        bgs = Bag.objects.all()
+
+        # date filters
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        if date_from:
+            bgs = bgs.filter(date__gte=date_from)
+        if date_to:
+            bgs = bgs.filter(date__lte=date_to)
+
+        # shipping company filter
+        shipping_company = request.GET.get('shipping_company')
+        if shipping_company:
+            bgs = bgs.filter(shipping_company__id=shipping_company)
+
+        serializer = BagSerializer(bgs, many=True)
+        return Response(serializer.data)
+    
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def get_bag(request, pk):
+    if request.method == 'GET':
+        bag = get_object_or_404(Bag, pk=pk)
+        serializer = OneBagSerializer(bag)
+        return Response(serializer.data)
+
+
+# create order with Bag
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def create_bag_with_order(request):
+    if request.method == 'POST':
+        bag_data = request.data.get("bag")
+        orders_data = request.data.get("orders", [])
+
+        date_data = bag_data.get("date")
+        if str(date_data) == '':
+            bag_data["date"] = None
+
+        if not bag_data:
+            return Response({"error": "Bag data is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            # Process the shipping_company field
+            shipping_company_input = bag_data.get("shipping_company")
+            if shipping_company_input:
+                try:
+                    shipping_courier = ShippingCourier.objects.get(name=shipping_company_input)
+                except ShippingCourier.DoesNotExist:
+                    shipping_courier = ShippingCourier.objects.create(name=shipping_company_input)
+                # Replace text with the ShippingCourier's id
+                bag_data["shipping_company"] = shipping_courier
+            else:
+                bag_data["shipping_company"] = None
+
+            bag_id = bag_data.get("id")
+            if bag_id:
+                try:
+                    bag = Bag.objects.get(id=bag_id)
+                    # Update bag fields (except id)
+                    for key, value in bag_data.items():
+                        if key != "id":
+                            setattr(bag, key, value)
+                    bag.save()
+                except Bag.DoesNotExist:
+                    bag = Bag.objects.create(**bag_data)
+            else:
+                bag = Bag.objects.create(**bag_data)
+
+            # Process orders
+            existing_orders = Order.objects.filter(bag=bag)
+            provided_order_ids = set()
+
+            for order_item in orders_data:
+                order_id = order_item.get("id")
+                seller_name = order_item.get("seller")
+
+                seller = None
+                if seller_name:
+                    try:
+                        seller = Sales.objects.get(user__username=seller_name)
+                    except Sales.DoesNotExist:
+                        pass
+                order_item["seller"] = seller
+
+                # bag_id = order_item.get("bag")
+                # bag = None
+                # if bag_id:
+                #     try:
+                #         bag = Bag.objects.get(id=bag_id)
+                #     except Bag.DoesNotExist:
+                #         pass
+                # order_item["bag"] = bag
+
+                if order_id:
+                    provided_order_ids.add(order_id)
+                    try:
+                        # Update the order if it exists and is related to this bag
+                        order = Order.objects.get(id=order_id, bag=bag)
+                        for key, value in order_item.items():
+                            if key != "id":
+                                if key == "bag":
+                                    value = bag
+                                setattr(order, key, value)
+                        order.save()
+                    except Order.DoesNotExist:
+                        # If provided id does not exist for this bag, create a new order
+                        order_item.pop("id", None)
+                        order = Order.objects.create(bag=bag, **order_item)
+                        provided_order_ids.add(order.id)
+                else:
+                    # Create a new order if no id is provided
+                    order = Order.objects.create(bag=bag, **order_item)
+                    provided_order_ids.add(order.id)
+
+            # Delete orders that existed before but are not present in the new data
+            orders_to_delete = existing_orders.exclude(id__in=provided_order_ids)
+            orders_to_delete.delete()
+
+        return Response(BagSerializer(bag).data, status=status.HTTP_201_CREATED)
+        # return Response({"bag_id": bag.id, "order_ids": list(provided_order_ids)}, status=status.HTTP_201_CREATED)

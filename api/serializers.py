@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Order, ShippingCourier, OrderStatus, Sales
+from .models import Order, ShippingCourier, OrderStatus, Sales, Bag
 from django.contrib.auth.models import User
 
 class UserSerializer(serializers.ModelSerializer):
@@ -17,6 +17,8 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
         user.save()
         return user
+
+
 
 
 
@@ -37,7 +39,22 @@ class SalesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderSerializer(serializers.ModelSerializer):
-    order_status_name = serializers.ReadOnlyField(source='order_status.name')
+    bag_name = serializers.ReadOnlyField(source='bag.name')
     class Meta:
         model = Order
+        fields = '__all__'
+
+
+class BagSerializer(serializers.ModelSerializer):
+    shipping_company_name = serializers.ReadOnlyField(source='shipping_company.name')
+    class Meta:
+        model = Bag
+        fields = '__all__'
+
+
+class OneBagSerializer(serializers.ModelSerializer):
+    shipping_company_name = serializers.ReadOnlyField(source='shipping_company.name')
+    orders_details = OrderSerializer(many=True, read_only=True, source='orders')
+    class Meta:
+        model = Bag
         fields = '__all__'
