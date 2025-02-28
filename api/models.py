@@ -48,6 +48,8 @@ class Bag(models.Model):
     discount_in_sar = models.IntegerField(default=0, null=True, blank=True)
     xg = models.CharField(max_length=255, blank=True, null=True, default=None)
 
+    is_closed = models.BooleanField(default=False, null=True, blank=True)
+
     def __str__(self):
         return self.name
 
@@ -57,10 +59,10 @@ class Order(models.Model):
     # customer details
     customer_name = models.CharField(max_length=255,null=True, blank=True)
     customer_number = models.CharField(max_length=50,null=True, blank=True)
-    customer_note = models.CharField(blank=True, null=True)
+    customer_note = models.CharField(max_length=1000, blank=True, null=True)
     how_many_pices = models.IntegerField(default=0, blank=True, null=True)
-    # pieces = models.JSONField(default=list)  # Store items as a list of dictionaries [{"code": "123", "price": 10}, {...}]
-    address = models.CharField(null=True, blank=True)
+    pieces = models.JSONField(default=list)  # Store items as a list of dictionaries [{"code": "123", "price": 10}, {...}]
+    address = models.CharField(max_length=1000, null=True, blank=True)
     # order status
     seller = models.ForeignKey(Sales, on_delete=models.SET_NULL, null=True, blank=True)
     paid_in_egp = models.IntegerField(default=0,null=True, blank=True)
@@ -74,23 +76,23 @@ class Order(models.Model):
         return self.customer_name
     
 
-class Piece(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='pieces')
-    product = models.CharField(max_length=255, null=True, blank=True)
-    code = models.CharField(max_length=255, null=True, blank=True)
-    price_in_egp = models.IntegerField(default=0,null=True, blank=True)
-    price_in_sar = models.IntegerField(default=0,null=True, blank=True)
+# class Piece(models.Model):
+#     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='pieces')
+#     product = models.CharField(max_length=255, null=True, blank=True)
+#     code = models.CharField(max_length=255, null=True, blank=True)
+#     price_in_egp = models.IntegerField(default=0,null=True, blank=True)
+#     price_in_sar = models.IntegerField(default=0,null=True, blank=True)
 
-    def __str__(self):
-        return f"{self.code}: {self.price}"
+#     def __str__(self):
+#         return f"{self.code}: {self.price}"
 
 
-class Image(models.Model):
-    piece = models.ForeignKey(Piece, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='images/')
+# class Image(models.Model):
+#     piece = models.ForeignKey(Piece, on_delete=models.CASCADE, related_name='images')
+#     image = models.ImageField(upload_to='images/')
 
-    def __str__(self):
-        return f"Image for {self.piece}"
+#     def __str__(self):
+#         return f"Image for {self.piece}"
 
 
 # class Order(models.Model):
