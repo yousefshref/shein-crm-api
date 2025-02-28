@@ -355,6 +355,13 @@ def get_bags(request):
         if date_to:
             bgs = bgs.filter(Q(date__lte=date_to) | Q(date__isnull=True))
 
+        # closed
+        is_closed = request.GET.get('is_closed')
+        if str(is_closed).lower() == 'true':
+            bgs = bgs.filter(is_closed=True)
+        if str(is_closed).lower() == 'false':
+            bgs = bgs.filter(is_closed=False)
+
         # shipping company filter
         shipping_company = request.GET.get('shipping_company')
         if shipping_company:
