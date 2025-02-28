@@ -40,6 +40,7 @@ class SalesSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     bag_name = serializers.ReadOnlyField(source='bag.name')
+    date = serializers.ReadOnlyField(source='bag.date')
     class Meta:
         model = Order
         fields = '__all__'

@@ -23,5 +23,6 @@ urlpatterns = [
     
     path('bags/', views.get_bags),
     path('bags/<int:pk>/', views.get_bag),
+    path('bags/<int:pk>/delete/', views.delete_bag),
     path('bags/create-update/', views.create_bag_with_order),
 ]

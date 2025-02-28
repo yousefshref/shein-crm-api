@@ -44,6 +44,15 @@ def order_list(request):
 
         shipping_company = request.GET.get('shipping_company')
 
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+
+        if date_from:
+            orders = orders.filter(bag__date__gte=date_from)
+            
+        if date_to:
+            orders = orders.filter(bag__date__lte=date_to)
+
         if shipping_company:
             orders = orders.filter(bag__shipping_company__id=shipping_company)
 
@@ -330,7 +339,7 @@ def get_yearly_orders_data(request):
 
 
 
-
+from django.db.models import Q
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
@@ -342,9 +351,9 @@ def get_bags(request):
         date_from = request.GET.get('date_from')
         date_to = request.GET.get('date_to')
         if date_from:
-            bgs = bgs.filter(date__gte=date_from)
+            bgs = bgs.filter(Q(date__gte=date_from) | Q(date__isnull=True))
         if date_to:
-            bgs = bgs.filter(date__lte=date_to)
+            bgs = bgs.filter(Q(date__lte=date_to) | Q(date__isnull=True))
 
         # shipping company filter
         shipping_company = request.GET.get('shipping_company')
@@ -363,6 +372,16 @@ def get_bag(request, pk):
         bag = get_object_or_404(Bag, pk=pk)
         serializer = OneBagSerializer(bag)
         return Response(serializer.data)
+
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_bag(request, pk):
+    if request.method == 'DELETE':
+        bag = get_object_or_404(Bag, pk=pk)
+        bag.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # create order with Bag

@@ -58,10 +58,11 @@ class Order(models.Model):
     customer_name = models.CharField(max_length=255)
     customer_number = models.CharField(max_length=50)
     customer_note = models.TextField(blank=True, null=True)
+    how_many_pices = models.IntegerField(default=0, blank=True, null=True)
     pieces = models.JSONField(default=list)  # Store items as a list of dictionaries [{"code": "123", "price": 10}, {...}]
     address = models.TextField()
     # order status
-    seller = models.ForeignKey(Sales, on_delete=models.SET_NULL, null=True)
+    seller = models.ForeignKey(Sales, on_delete=models.SET_NULL, null=True, blank=True)
     paid_in_egp = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     paid_in_sar = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     remaining_in_egp = models.DecimalField(max_digits=10, decimal_places=2, default=0)
