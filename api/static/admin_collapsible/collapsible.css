@@ -1,0 +1,15 @@
+h3 {
+    background: #f5f5f5;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .djn-items {
+    margin-bottom: 20px;
+  }
+  
