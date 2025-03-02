@@ -19,7 +19,6 @@ urlpatterns = [
     path('user-sales/create/', views.create_user_and_sales, name='user-sales-list'),
     
     path('orders-data/', views.get_yearly_orders_data, name='orders-data'),
-
     
     path('bags/', views.get_bags),
     path('bags/<int:pk>/', views.get_bag),

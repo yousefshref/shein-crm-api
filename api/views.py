@@ -345,7 +345,7 @@ from django.db.models import Q
 @permission_classes([IsAuthenticated])
 def get_bags(request):
     if request.method == 'GET':
-        bgs = Bag.objects.all()
+        bgs = Bag.objects.all().order_by('-id')
 
         # date filters
         date_from = request.GET.get('date_from')
