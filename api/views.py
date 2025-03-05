@@ -272,13 +272,8 @@ def filter_orders(request):
 
 @api_view(['GET'])
 def get_yearly_orders_data(request):
-    """
-    Expected GET parameters:
-      - year (e.g. ?year=2025)
-      - (optional) other filters as in filter_orders
-    """
     orders = filter_orders(request)
-    
+
     year_param = request.GET.get('year')
     if not year_param:
         return Response({"error": "Year parameter is required"}, status=400)
@@ -286,52 +281,44 @@ def get_yearly_orders_data(request):
         year = int(year_param)
     except ValueError:
         return Response({"error": "Invalid year parameter"}, status=400)
-    
-    # Filter orders for the selected year
-    orders = orders.filter(date__year=year)
-    
-    # Group orders by month and aggregate
-    aggregated = orders.annotate(month=TruncMonth('date')).values('month').annotate(
-        total_orders_sar=Sum('total_order_in_sar'),
-        total_orders_egp=Sum('total_order_in_eg'),
-        total_profit_sar=Sum('total_order_profit_in_sar'),
-        total_profit_egp=Sum('total_order_profit_in_eg'),
-        total_shipping_cost=Sum('shipping_cost'),
-        total_orders_count=Count('id')
+
+    # Filter orders by year on bag__date
+    orders = orders.filter(bag__date__year=year)
+
+    # Group by month and aggregate
+    aggregated = orders.annotate(month=TruncMonth('bag__date')).values('month').annotate(
+        total_orders_count=Count('id'),
+        total_price=Sum('bag__price_in_egp', distinct=True),  # Sum unique bag prices
+        total_profit=Sum('bag__profit_in_egp'),
+        total_xg=Sum('bag__xg'),
     ).order_by('month')
-    
-    # Create a dictionary keyed by month number (1-12)
+
     aggregated_dict = {}
     for entry in aggregated:
         if entry['month']:
             month_number = entry['month'].month
             aggregated_dict[month_number] = {
-                "total_orders_sar": entry['total_orders_sar'] or 0,
-                "total_orders_egp": entry['total_orders_egp'] or 0,
-                "total_profit_sar": entry['total_profit_sar'] or 0,
-                "total_profit_egp": entry['total_profit_egp'] or 0,
-                "total_shipping_cost": entry['total_shipping_cost'] or 0,
                 "total_orders_count": entry['total_orders_count'] or 0,
+                "total_price": entry['total_price'] or 0,
+                "total_profit": entry['total_profit'] or 0,
+                "total_xg": entry['total_xg'] or 0,
             }
-    
-    # Build the result for all months (1 to 12)
+
     months_data = []
     for m in range(1, 13):
         month_name = calendar.month_name[m]
         data = aggregated_dict.get(m, {
-            "total_orders_sar": 0,
-            "total_orders_egp": 0,
-            "total_profit_sar": 0,
-            "total_profit_egp": 0,
-            "total_shipping_cost": 0,
             "total_orders_count": 0,
+            "total_price": 0,
+            "total_profit": 0,
+            "total_xg": 0,
         })
         months_data.append({
             "month_number": m,
             "month_name": month_name,
             **data
         })
-    
+
     return Response({
         "year": year,
         "months": months_data
@@ -486,3 +473,37 @@ def create_bag_with_order(request):
 
         return Response(BagSerializer(bag).data, status=status.HTTP_201_CREATED)
         # return Response({"bag_id": bag.id, "order_ids": list(provided_order_ids)}, status=status.HTTP_201_CREATED)
+
+
+
+from datetime import datetime
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def get_bag_for_graph(request):
+    # Get the dates range from the request
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+
+    # Make these dates range as months names
+    from_month = datetime.strptime(date_from, '%Y-%m-%d').strftime('%B')
+    to_month = datetime.strptime(date_to, '%Y-%m-%d').strftime('%B')
+
+    # Get all bags in this range
+    bags = Bag.objects.filter(date__range=(date_from, date_to))
+
+    # Collect every bag that in the same month and calculate these fields and add them under this month
+    data = {}
+    for bag in bags:
+        month = bag.date.strftime('%B')
+        data.setdefault(month, {})
+        data[month].setdefault('price_in_egp', 0)
+        data[month].setdefault('profit_in_egp', 0)
+
+        data[month]['price_in_egp'] += bag.price_in_egp
+        data[month]['profit_in_egp'] += bag.profit_in_egp
+
+    # Return the data
+    return Response(data, status=status.HTTP_200_OK)
+

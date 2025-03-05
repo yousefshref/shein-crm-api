@@ -24,4 +24,7 @@ urlpatterns = [
     path('bags/<int:pk>/', views.get_bag),
     path('bags/<int:pk>/delete/', views.delete_bag),
     path('bags/create-update/', views.create_bag_with_order),
+
+
+    path('bags/graphes/', views.get_bag_for_graph),
 ]

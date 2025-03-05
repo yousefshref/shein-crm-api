@@ -49,6 +49,15 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class BagSerializer(serializers.ModelSerializer):
     shipping_company_name = serializers.ReadOnlyField(source='shipping_company.name')
+    total_paid_in_egp = serializers.SerializerMethodField()
+
+    def get_total_paid_in_egp(self, obj):
+        orders = obj.orders.all()
+        total = 0
+        for order in orders:
+            total += order.paid_in_egp
+        return total
+    
     class Meta:
         model = Bag
         fields = '__all__'
