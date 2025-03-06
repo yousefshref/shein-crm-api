@@ -40,6 +40,7 @@ class SalesSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     seller_name = serializers.ReadOnlyField(source='seller.user.username')
+    seller = serializers.ReadOnlyField(source='seller.user.username')
     bag_name = serializers.ReadOnlyField(source='bag.name')
     date = serializers.ReadOnlyField(source='bag.date')
     class Meta:
@@ -49,13 +50,24 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class BagSerializer(serializers.ModelSerializer):
     shipping_company_name = serializers.ReadOnlyField(source='shipping_company.name')
-    total_paid_in_egp = serializers.SerializerMethodField()
+    total_paid_in_egp = serializers.SerializerMethodField(read_only=True)
+    total_pieces = serializers.SerializerMethodField(read_only=True)
 
     def get_total_paid_in_egp(self, obj):
         orders = obj.orders.all()
         total = 0
         for order in orders:
             total += order.paid_in_egp
+        return total
+
+    def get_total_pieces(self, obj):
+        orders = obj.orders.all()
+        total = 0
+        for order in orders:
+            if order.how_many_pices > 0:
+                total += order.how_many_pices
+            else:
+                total += len(order.pieces)
         return total
     
     class Meta:

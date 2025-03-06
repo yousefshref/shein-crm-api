@@ -387,6 +387,8 @@ def create_bag_with_order(request):
         bag_data = request.data.get("bag")
         orders_data = request.data.get("orders", [])
 
+        print(orders_data)
+
         date_data = bag_data.get("date")
         if str(date_data) == '':
             bag_data["date"] = None

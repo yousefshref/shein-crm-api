@@ -73,7 +73,7 @@ class Order(models.Model):
     is_collected = models.BooleanField(default=False,null=True, blank=True)
 
     def __str__(self):
-        return self.customer_name
+        return str(self.customer_name)
     
 
 # class Piece(models.Model):
