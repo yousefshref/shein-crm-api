@@ -32,7 +32,7 @@ def get_user(request):
 @api_view(['GET', 'POST'])
 def order_list(request):
     if request.method == 'GET':
-        orders = Order.objects.all().order_by('-id')
+        orders = Order.objects.all().order_by('-bag__date')
     
         # order info
         sales_id = request.GET.get('sales_id')
@@ -56,8 +56,9 @@ def order_list(request):
         if shipping_company:
             orders = orders.filter(bag__shipping_company__id=shipping_company)
 
-        if sales_id:
-            orders = orders.filter(seller__id=sales_id)
+        # if sales_id:
+        #     orders = orders.filter(seller__id=sales_id)
+
         if customer_name:
             orders = orders.filter(customer_name__icontains=customer_name)
         if customer_number:
@@ -332,7 +333,7 @@ from django.db.models import Q
 @permission_classes([IsAuthenticated])
 def get_bags(request):
     if request.method == 'GET':
-        bgs = Bag.objects.all().order_by('-id')
+        bgs = Bag.objects.all().order_by('-date')
 
         # date filters
         date_from = request.GET.get('date_from')

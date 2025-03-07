@@ -39,6 +39,7 @@ class SalesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderSerializer(serializers.ModelSerializer):
+    seller_id = serializers.ReadOnlyField(source='seller.id')
     seller_name = serializers.ReadOnlyField(source='seller.user.username')
     seller = serializers.ReadOnlyField(source='seller.user.username')
     bag_name = serializers.ReadOnlyField(source='bag.name')
