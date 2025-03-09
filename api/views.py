@@ -56,8 +56,11 @@ def order_list(request):
         if shipping_company:
             orders = orders.filter(bag__shipping_company__id=shipping_company)
 
-        # if sales_id:
-        #     orders = orders.filter(seller__id=sales_id)
+        if sales_id:
+            if str(sales_id) == 'no':
+                orders = orders.filter(seller__id__isnull=True)
+            else:
+                orders = orders.filter(seller__id=sales_id)
 
         if customer_name:
             orders = orders.filter(customer_name__icontains=customer_name)
