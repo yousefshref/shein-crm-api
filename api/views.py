@@ -348,7 +348,8 @@ def get_yearly_orders_data(request):
 
 
 
-from django.db.models import Q
+from django.db.models import Q, Sum, DecimalField
+from django.db.models.functions import Coalesce
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
@@ -376,8 +377,49 @@ def get_bags(request):
         if shipping_company:
             bgs = bgs.filter(shipping_company__id=shipping_company)
 
+
+        
+        # Seller profit calculations (no filtering of bags)
+        seller_id = request.GET.get('seller')
+        temp_bags = []
+        bags_profit_egp = 0
+        orders_profit_egp = 0
+        
+        if seller_id:
+            # bags_profit_egp
+            for i in bgs:
+                if i in temp_bags:
+                    continue
+                else:
+                    temp_bags.append(i)
+                    bags_profit_egp += i.profit_in_egp
+
+            # orders_profit_egp
+            temp_orders = []
+            temp_order_bag = []
+            for i in temp_bags:
+                bag_orders = Order.objects.filter(bag=i)
+                for order in bag_orders:
+                    if order:
+                        if order.pk in temp_orders:
+                            continue
+                        else:
+                            if str(seller_id) == str(getattr(order.seller, 'pk', "")):
+                                if order.bag.pk in temp_order_bag:
+                                    continue
+                                else:
+                                    temp_orders.append(order.pk)
+                                    temp_order_bag.append(order.bag.pk)
+                                    orders_profit_egp += order.bag.profit_in_egp
+
         serializer = BagSerializer(bgs, many=True)
-        return Response(serializer.data)
+
+        data = {
+            "bags": serializer.data,
+            "bags_profit_egp": float(bags_profit_egp) if bags_profit_egp else 0.0,
+            "orders_profit_egp": float(orders_profit_egp) if orders_profit_egp else 0.0,
+        }
+        return Response(data)
     
 
 @api_view(['GET'])
@@ -408,6 +450,8 @@ def create_bag_with_order(request):
     if request.method == 'POST':
         bag_data = request.data.get("bag")
         orders_data = request.data.get("orders", [])
+
+        print(orders_data)
 
         date_data = bag_data.get("date")
         if str(date_data) == '':
