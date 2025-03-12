@@ -56,12 +56,6 @@ def order_list(request):
         if shipping_company:
             orders = orders.filter(bag__shipping_company__id=shipping_company)
 
-        if sales_id:
-            if str(sales_id) == 'no':
-                orders = orders.filter(seller__id__isnull=True)
-            else:
-                orders = orders.filter(seller__id=sales_id)
-
         if customer_name:
             orders = orders.filter(customer_name__icontains=customer_name)
         if customer_number:
@@ -77,8 +71,32 @@ def order_list(request):
         if str(is_collected) == 'false':
             orders = orders.filter(is_collected=False)
 
+
+        
         serializer = OrderSerializer(orders, many=True)
-        return Response(serializer.data)
+        
+        data = {
+            "orders": serializer.data,
+        }
+
+
+        all_orders_with_no_seller = []
+        if sales_id:
+            if str(sales_id) == 'no':
+                orders = orders.filter(seller__id__isnull=True)
+            else:
+                all_orders_with_no_seller = orders # all
+                orders = orders.filter(seller__id=sales_id) # seller
+
+                serializer = OrderSerializer(orders, many=True)
+                
+                data = {
+                    "orders": serializer.data,
+                    "all_orders_with_no_seller": OrderSerializer(all_orders_with_no_seller, many=True).data
+                }
+
+
+        return Response(data)
     
     elif request.method == 'POST':
         serializer = OrderSerializer(data=request.data)
@@ -390,8 +408,6 @@ def create_bag_with_order(request):
     if request.method == 'POST':
         bag_data = request.data.get("bag")
         orders_data = request.data.get("orders", [])
-
-        print(orders_data)
 
         date_data = bag_data.get("date")
         if str(date_data) == '':
