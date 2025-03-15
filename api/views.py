@@ -95,7 +95,6 @@ def order_list(request):
                     "all_orders_with_no_seller": OrderSerializer(all_orders_with_no_seller, many=True).data
                 }
 
-
         return Response(data)
     
     elif request.method == 'POST':

@@ -44,6 +44,8 @@ class OrderSerializer(serializers.ModelSerializer):
     seller = serializers.ReadOnlyField(source='seller.user.username')
     bag_name = serializers.ReadOnlyField(source='bag.name')
     date = serializers.ReadOnlyField(source='bag.date')
+    discount_in_egp = serializers.ReadOnlyField(source='bag.discount_in_egp')
+    
     class Meta:
         model = Order
         fields = '__all__'
